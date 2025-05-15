@@ -1,0 +1,27 @@
+{
+    "folders": [
+        {
+            "path": "."
+        }
+    ],
+    "settings": {
+        "files.associations": {
+            "delay.h": "c",
+            "mpu6050.h": "c",
+            "DH11.C": "cpp",
+            "stm32f10x.h": "c",
+            "sys_delay.h": "c",
+            "stime.h": "c",
+            "stdio.h": "c",
+            "sg04.h": "c",
+            "dh11.h": "c",
+            "hmc5843.h": "c",
+            "hmc58_reg.h": "c",
+            "GY-27-HMC5883 STC IIC测试程序.C": "cpp",
+            "string.h": "c",
+            "key.h": "c",
+            "math.h": "c"
+        }
+    },
+    "extensions": {}
+}
