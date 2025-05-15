@@ -32,23 +32,11 @@ int main(void)
     // 系统初始化
     My_SystemInit();
     
-    // 显示LED指示器信息
-    OLED_Clear();
-    OLED_ShowString(1, 1, "LED Indicators:");
-    OLED_ShowString(2, 1, "LED1: Distance");
-    OLED_ShowString(3, 1, "LED2: Speed");
-    OLED_ShowString(4, 1, "PA8:SET PA7:LOCK");
-    sys_Delay_ms(2000);
-    OLED_Clear();
-    
     // 进入设置菜单，设置目标速度和距离
     Key_SettingsMenu();
-    
-    // 延时以确保系统稳定
-    sys_Delay_ms(100);
-    
-    // 启动骑行时间计时
-    //STime_Start();
+ 
+    // 确保启动骑行时间计时 - 取消注释
+    STime_Start();
     
     // 主循环
     while (1)
@@ -58,22 +46,22 @@ int main(void)
         
         // 2. 计算坡度 (根据pitch角度)
         Slope = CalculateSlope(Pitch);
-        
-        // 3. 处理霍尔传感器数据 - 只在未锁存状态下进行
-        if (!STime_IsDataLocked()) {
-            Hall_Process();
-        }
-
-        // 4. 处理按键和警报
+        // 5. 处理按键和警报
         Key_Process();
-                
-        // 5. 只有在骑行未结束且未锁存时更新时间
+        
+        // 3. 只有在骑行未结束且未锁存时更新时间
         /*
         if(STime_IsRunning() && !STime_IsDataLocked()) {
            
         }
         */
          STime_Update();//计算总时间
+        // 4. 处理霍尔传感器数据 - 只在未锁存状态下进行
+        if (!STime_IsDataLocked()) {
+            Hall_Process();
+        }
+
+
         // 6. 根据当前显示模式更新显示
         if (g_displayMode == DISPLAY_REALTIME) {
             Display_RealtimeData(Slope, Yaw);
@@ -82,8 +70,6 @@ int main(void)
             Display_LockedData();
         }
         
-        // 7. 适当延时，减少处理频率
-        sys_Delay_ms(7);
     }
 }
 

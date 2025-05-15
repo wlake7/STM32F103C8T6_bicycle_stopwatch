@@ -535,15 +535,23 @@ void Display_RealtimeData(float slope, float direction)
     OLED_ShowNum(1, 9, speed_frac, 1);
     OLED_ShowString(1, 10, "km/h");
     
-    // 显示骑行距离
+    // 显示骑行距离 - 修改为更精确的显示方式
     float distance = Hall_GetTotalDistance();
+    OLED_ShowString(2, 1, "D:");
+    
+    // 增加小数点后两位显示，增强精度
     uint32_t dist_int = (uint32_t)distance;
-    uint32_t dist_frac = (uint32_t)((distance - dist_int) * 10) % 10;
-    OLED_ShowString(2, 1, "Dist:");
-    OLED_ShowNum(2, 7, dist_int, 2);
-    OLED_ShowChar(2, 9, '.');
-    OLED_ShowNum(2, 10, dist_frac, 1);
-    OLED_ShowString(2, 12, "km");
+    uint32_t dist_frac = (uint32_t)((distance - dist_int) * 100) % 100; // 显示两位小数
+    OLED_ShowNum(2, 3, dist_int, 2);
+    OLED_ShowChar(2, 5, '.');
+    // 确保小数部分显示两位数字
+    if (dist_frac < 10) {
+        OLED_ShowChar(2, 6, '0');
+        OLED_ShowNum(2, 7, dist_frac, 1);
+    } else {
+        OLED_ShowNum(2, 6, dist_frac, 2);
+    }
+    OLED_ShowString(2, 9, "km");
     
     // 显示坡度和方向
     uint32_t slope_int = (uint32_t)fabs(slope);  // 使用标准fabs替代fabsf
@@ -579,15 +587,20 @@ void Display_RealtimeData(float slope, float direction)
         OLED_ShowString(3, 10, "West");
     else
         OLED_ShowString(3, 10, "NW");
-    // 显示骑行时间
-    OLED_ShowString(4, 1, "Time:");
-    OLED_ShowNum(4, 7, ridingTime.hours, 2);
-    OLED_ShowChar(4, 9, ':');
-    OLED_ShowNum(4, 10, ridingTime.minutes, 2);
-    OLED_ShowChar(4, 12, ':');
-    OLED_ShowNum(4, 13, ridingTime.seconds, 2);
-    //OLED_ShowNum(4, 7,ridingTime.totalTimeMs, 6);
+    // 显示骑行时间 - 改为更直观的格式，同时显示秒数以方便验证
+    OLED_ShowString(4, 1, "T:");
     
+    // 显示时:分:秒格式
+    OLED_ShowNum(4, 3, ridingTime.hours, 2);
+    OLED_ShowChar(4, 5, ':');
+    OLED_ShowNum(4, 6, ridingTime.minutes, 2);
+    OLED_ShowChar(4, 8, ':');
+    OLED_ShowNum(4, 9, ridingTime.seconds, 2);
+    
+    // 显示总秒数以便验证 (调试用)
+    uint32_t totalSec = ridingTime.totalTimeMs / 1000;
+    OLED_ShowString(4, 12, "s:");
+    OLED_ShowNum(4, 14, totalSec, 3);
 }
 
 // 让LED闪烁指定次数

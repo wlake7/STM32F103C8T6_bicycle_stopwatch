@@ -5,7 +5,7 @@
 #include "key.h"
 
 // 可配置参数
-#define WHEEL_CIRCUMFERENCE    4.0f    // 车轮周长(m)
+#define WHEEL_CIRCUMFERENCE    40000.0f    // 车轮周长(cm)，更正单位说明
 #define MAGNET_COUNT           4         // 每转一圈的磁铁数量
 #define MEDIAN_FILTER_SIZE     3         // 中值滤波器大小 (建议奇数, 如 3 或 5)
 

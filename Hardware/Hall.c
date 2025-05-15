@@ -63,7 +63,7 @@ void Hall_Init(void)
     TIM_ICInitStructure.TIM_ICPolarity = TIM_ICPolarity_Rising;
     TIM_ICInitStructure.TIM_ICSelection = TIM_ICSelection_DirectTI;
     TIM_ICInitStructure.TIM_ICPrescaler = TIM_ICPSC_DIV1;
-    TIM_ICInitStructure.TIM_ICFilter = 0x02;  // 滤波设置
+    TIM_ICInitStructure.TIM_ICFilter = 0x03;  // 滤波设置
     TIM_ICInit(TIM2, &TIM_ICInitStructure);
     
     // 配置TIM2中断
@@ -109,7 +109,7 @@ void Hall_Init(void)
 // 输入捕获回调函数 (在中断上下文中执行)
 // 功能：捕获霍尔信号，使用中值滤波+EWMA计算速度，并计算加速度
 void Hall_CaptureCallback(void)
-{
+{   
     // 如果数据已锁存，不再处理新的捕获事件
     if ( g_dataLocked) {
         return;
@@ -189,8 +189,9 @@ void Hall_CaptureCallback(void)
     // --- 4. 计算瞬时速度 (基于 interval_us) ---
     if (interval_us > 0) {
         // 预计算常量部分，减少重复计算
-        const float distancePerPulse = (float)WHEEL_CIRCUMFERENCE / MAGNET_COUNT; // Ensure float division
-        const float speedConvFactor = distancePerPulse * 3.6f; // 3.6 = 3600/1000 (km/h 转换因子)
+        // 修正：WHEEL_CIRCUMFERENCE应为4.0米(400厘米)，而非400米
+        const float distancePerPulse = (WHEEL_CIRCUMFERENCE / 100.0f) / MAGNET_COUNT; // 每个脉冲的距离(米)
+        const float speedConvFactor = distancePerPulse * 3.6f; // 3.6 = 3600/1000 (转换为km/h)
         
         float timeInS = interval_us * 0.000001f; // 使用乘法代替除法
         
@@ -277,9 +278,14 @@ void Hall_TimeoutCheck(void)
 // 功能：更新总距离和平均速度
 static void Hall_UpdateDistanceAndAverageSpeed(void)
 {
-    // 计算总距离 (km) - 浮点运算
-    float totalRotations = (float)hallSensor.totalPulses / MAGNET_COUNT;
-    hallSensor.totalDistance = totalRotations * WHEEL_CIRCUMFERENCE / 1000.0f;
+    // 计算总距离 (km) - 修正浮点运算和单位换算
+    // 400m周长表示车轮一圈为400cm=4.0m，而非400m
+    // 修正WHEEL_CIRCUMFERENCE的理解和使用
+    float totalRotations = (float)hallSensor.totalPulses / MAGNET_COUNT; // 总转数=总脉冲/磁铁数
+    
+    // 修正：WHEEL_CIRCUMFERENCE应为4.0米(400厘米)，而非400米
+    // 这里计算的是：总转数 * 每转距离(米) / 1000 = 公里数
+    hallSensor.totalDistance = totalRotations * (WHEEL_CIRCUMFERENCE / 100.0f) / 1000.0f;
 
     // 计算平均速度 (km/h) - 浮点运算
     uint32_t totalRidingTime = STime_GetTotalRidingTimeMs();// 获取总骑行时间 (ms)
@@ -472,7 +478,7 @@ void TIM2_IRQHandler(void)
     {
         // 调用霍尔传感器捕获回调函数
         Hall_CaptureCallback(); // 回调函数内部会读取捕获值
-
+        
         // 清除中断标志 (官方建议在处理完中断后清除)
         TIM_ClearITPendingBit(TIM2, TIM_IT_CC3);
     }

@@ -78,27 +78,25 @@ void STime_Update(void)
     uint32_t currentTime = systemTimeMs;
     
     // 检查骑行状态，如果数据已锁存，则不更新
-
     if (g_dataLocked) {
         return;
     }
 
-    // 检查骑行状态
-    RidingState_t currentRidingState = Hall_GetRidingState();
-    
-    // 如果是首次检测到骑行活动，自动开始计时
-    /*
-    if (currentRidingState == RIDING_ACTIVE && !ridingTime.isRunning) {
-        ridingTime.isRunning = 1;
-        ridingTime.lastUpdateTimeMs = currentTime;
-    }
-    */
-    // 如果计时器正在运行，更新时间（不再判断骑行状态）
+    // 如果计时器正在运行，更新时间
     if (ridingTime.isRunning) {
-        uint32_t elapsedTime = currentTime - ridingTime.lastUpdateTimeMs; // 计算时间差
+        // 计算时间差，处理32位溢出情况
+        uint32_t elapsedTime;
+        if (currentTime >= ridingTime.lastUpdateTimeMs) {
+            elapsedTime = currentTime - ridingTime.lastUpdateTimeMs;
+        } else {
+            // 处理溢出情况
+            elapsedTime = (0xFFFFFFFF - ridingTime.lastUpdateTimeMs) + currentTime + 1;
+        }
         
+        // 更新总时间
         ridingTime.totalTimeMs += elapsedTime;
         
+        // 更新最后时间戳
         ridingTime.lastUpdateTimeMs = currentTime;
         
         // 格式化时间为时分秒
@@ -110,17 +108,9 @@ void STime_Update(void)
         ridingTime.hours = totalMinutes / 60;
     }
     else {
-        // 如果骑行状态为停止，更新时间为0
+        // 如果计时器未运行，只更新时间戳
         ridingTime.lastUpdateTimeMs = currentTime;
     }
-    
-    // 如果骑行状态变为停止且计时正在运行，可以选择是否自动停止计时
-    // 这里保留计时，但您可以根据需求取消注释下面的代码
-    /*
-    if (currentRidingState == RIDING_STOPPED && ridingTime.isRunning) {
-        ridingTime.isRunning = 0;
-    }
-    */
 }
 
 // 获取总骑行时间(ms)
