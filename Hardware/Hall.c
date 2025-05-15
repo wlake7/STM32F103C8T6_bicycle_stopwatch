@@ -185,7 +185,7 @@ void Hall_CaptureCallback(void)
     // 设置骑行状态
     hallSensor.ridingState = RIDING_ACTIVE; // 中断函数中设置骑行状态为ACTIVE
     hallSensor.noSignalTimeout = 0; // 重置超时计数器
-    ridingTime.isRunning = 1;
+    //ridingTime.isRunning = 1;
     // --- 4. 计算瞬时速度 (基于 interval_us) ---
     if (interval_us > 0) {
         // 预计算常量部分，减少重复计算
@@ -278,23 +278,19 @@ void Hall_TimeoutCheck(void)
 // 功能：更新总距离和平均速度
 static void Hall_UpdateDistanceAndAverageSpeed(void)
 {
-    // 计算总距离 (km) - 修正浮点运算和单位换算
-    // 400m周长表示车轮一圈为400cm=4.0m，而非400m
-    // 修正WHEEL_CIRCUMFERENCE的理解和使用
-    float totalRotations = (float)hallSensor.totalPulses / MAGNET_COUNT; // 总转数=总脉冲/磁铁数
-    
-    // 修正：WHEEL_CIRCUMFERENCE应为4.0米(400厘米)，而非400米
-    // 这里计算的是：总转数 * 每转距离(米) / 1000 = 公里数
-    hallSensor.totalDistance = totalRotations * (WHEEL_CIRCUMFERENCE / 100.0f) / 1000.0f;
+    // 计算总距离 (km) - 浮点运算
+    float totalRotations = (float)hallSensor.totalPulses / MAGNET_COUNT;
+    hallSensor.totalDistance = totalRotations * WHEEL_CIRCUMFERENCE / 1000.0f;
 
     // 计算平均速度 (km/h) - 浮点运算
-    uint32_t totalRidingTime = STime_GetTotalRidingTimeMs();// 获取总骑行时间 (ms)
+    uint32_t totalRidingTime = STime_GetTotalRidingTimeMs();
     if (totalRidingTime > 0) {
         // 平均速度 = 总距离(km) / 总时间(小时)
         hallSensor.averageSpeed = (hallSensor.totalDistance * 3600000.0f) / totalRidingTime;
     } else {
         hallSensor.averageSpeed = 0;
     }
+ 
 }
 
 //==================================================================================================================================

@@ -36,7 +36,7 @@ int main(void)
     Key_SettingsMenu();
  
     // 确保启动骑行时间计时 - 取消注释
-    STime_Start();
+    //STime_Start();
     
     // 主循环
     while (1)
@@ -50,11 +50,6 @@ int main(void)
         Key_Process();
         
         // 3. 只有在骑行未结束且未锁存时更新时间
-        /*
-        if(STime_IsRunning() && !STime_IsDataLocked()) {
-           
-        }
-        */
          STime_Update();//计算总时间
         // 4. 处理霍尔传感器数据 - 只在未锁存状态下进行
         if (!STime_IsDataLocked()) {

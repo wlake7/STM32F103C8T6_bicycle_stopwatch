@@ -553,6 +553,8 @@ void Display_RealtimeData(float slope, float direction)
     }
     OLED_ShowString(2, 9, "km");
     
+
+    
     // 显示坡度和方向
     uint32_t slope_int = (uint32_t)fabs(slope);  // 使用标准fabs替代fabsf
     uint32_t slope_frac = (uint32_t)((fabs(slope) - slope_int) * 10) % 10;
@@ -598,7 +600,7 @@ void Display_RealtimeData(float slope, float direction)
     OLED_ShowNum(4, 9, ridingTime.seconds, 2);
     
     // 显示总秒数以便验证 (调试用)
-    uint32_t totalSec = ridingTime.totalTimeMs / 1000;
+    uint32_t totalSec = ridingTime.totalTimeMs / 100;
     OLED_ShowString(4, 12, "s:");
     OLED_ShowNum(4, 14, totalSec, 3);
 }
@@ -626,8 +628,7 @@ void LED_Blink(uint16_t LED_Pin, uint8_t times)
 // 按键处理函数(主循环中调用)
 void Key_Process(void)
 {
-    static uint32_t lastTime = 0;
-    extern volatile uint32_t systemTimeMs; // 使用extern声明外部变量
+
     
     // 处理目标距离达成逻辑 - LED1
     if (Hall_IsTargetDistanceReached() && !g_distanceTargetReached )
@@ -727,8 +728,5 @@ void Key_Process(void)
         LED_Control(LED2_PIN, 0);
     }
     */
-    // 防止过于频繁处理
-    if(systemTimeMs - lastTime >= 100) { // 100ms执行一次
-        lastTime = systemTimeMs;
-    }
+
 }
