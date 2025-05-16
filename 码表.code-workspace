@@ -20,7 +20,8 @@
             "GY-27-HMC5883 STC IIC测试程序.C": "cpp",
             "string.h": "c",
             "key.h": "c",
-            "math.h": "c"
+            "math.h": "c",
+            "usart.h": "c"
         }
     },
     "extensions": {}

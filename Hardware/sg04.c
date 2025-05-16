@@ -3,7 +3,7 @@
 #include "sg04.h"
 
 uint8_t HCSR04_CompleteFlag;  // 测量完成标志
-float HCSR04_Distance;        // 测量距离结果
+float HCSR04_Distance;        // 距离
 static uint32_t HCSR04_OverflowCount = 0;  // 溢出次数计数
 
 
@@ -15,13 +15,7 @@ void HCSR04_led_Init(void)
     // 时钟使能
     RCC_APB2PeriphClockCmd(RCC_APB2Periph_GPIOA|RCC_APB2Periph_GPIOB, ENABLE);
     RCC_APB1PeriphClockCmd(RCC_APB1Periph_TIM3, ENABLE);
-    //LED引脚配置
-    GPIO_InitTypeDef GPIO_InitLED;
-    GPIO_InitLED.GPIO_Mode = GPIO_Mode_Out_PP;
-    GPIO_InitLED.GPIO_Pin = LED_T;
-    GPIO_InitLED.GPIO_Speed = GPIO_Speed_50MHz;
-    GPIO_Init(GPIOB, &GPIO_InitLED);
-    
+
     // Trig引脚配置
     GPIO_InitTypeDef GPIO_InitTrig;
     GPIO_InitTrig.GPIO_Mode = GPIO_Mode_Out_PP;
@@ -115,10 +109,9 @@ float HCSR04_GetDistance(void)
             avg += HCSR04_Distance;
             valid_count++;
         }
-        sys_Delay_ms(30);  // 采样间隔
     }
     
-    if(valid_count == 0) return 0;  // 没有有效数据
+    if(valid_count == 0) return 200;  // 没有有效数据
     
     // 计算初步平均值
     avg /= valid_count;
@@ -134,7 +127,7 @@ float HCSR04_GetDistance(void)
         }
     }
     
-    return (valid_count > 0) ? (final_avg / valid_count) : 0;
+    return (valid_count > 0) ? (final_avg / valid_count) : 200;
 }
 
 // TIM3中断服务函数（获取数据并处理得到距离）
@@ -184,14 +177,7 @@ void TIM3_IRQHandler(void)
             {
                 HCSR04_Distance = 0;  // 小于最小距离视为无效
             }
-            if (HCSR04_Distance<LED_Reminder)
-            {
-                GPIO_SetBits(GPIOB, LED_T);  // 点亮LED灯
-            }
-            else
-            {
-                GPIO_ResetBits(GPIOB, LED_T);  // 熄灭LED灯
-            }
+
             TIM_OC1PolarityConfig(TIM3, TIM_ICPolarity_Rising);   // 切换回上升沿捕获
             HCSR04_CompleteFlag = 1;  // 设置完成标志
 

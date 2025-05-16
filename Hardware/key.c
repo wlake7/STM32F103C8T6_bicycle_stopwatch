@@ -19,7 +19,7 @@
 #define SPEED_MIN             5.0f      // 最小可设置速度 (km/h)
 #define DISTANCE_MAX          100.0f    // 最大可设置距离 (km)
 #define DISTANCE_MIN          0.5f      // 最小可设置距离 (km)
-#define OBSTACLE_DISTANCE     1.5f      // 障碍物警报距离 (m)
+
 #define LED_BLINK_INTERVAL    500       // LED闪烁间隔 (ms)
 
 // 全局变量定义
@@ -669,6 +669,7 @@ void Key_Process(void)
 {
 
     
+
     // 处理目标距离达成逻辑 - LED1
     if (Hall_IsTargetDistanceReached() && !g_distanceTargetReached )
     {
@@ -697,13 +698,6 @@ void Key_Process(void)
         g_speedTargetReached = 0;
     }
     
-    // 处理超声波测距警报
-    float distance = HCSR04_Distance;
-    if(distance > 0 && distance < OBSTACLE_DISTANCE) {
-        Buzzer_ON();
-    } else {
-        Buzzer_OFF();
-    }
 
     // 修改为锁存状态下持续发送蓝牙数据
     if (g_displayMode == DISPLAY_LOCKED) {

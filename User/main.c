@@ -16,7 +16,7 @@ float Pitch, Roll, Yaw;
 float Slope; // 存储计算出的坡度值
 // 系统初始化函数
 void My_SystemInit(void);
-
+#define OBSTACLE_DISTANCE     150.0f      // 障碍物警报距离 (m)
 // 计算坡度(单位: %)
 float CalculateSlope(float pitch);
 
@@ -40,15 +40,27 @@ int main(void)
     
     // 主循环
     while (1)
-    {   
+    {
         // 1. 采集传感器数据 (MPU6050, HMC5843, 超声波)
         CollectSensorData();
         
         // 2. 计算坡度 (根据pitch角度)
         Slope = CalculateSlope(Pitch);
- 
+            float distance = HCSR04_GetDistance();
+    if(distance < OBSTACLE_DISTANCE) 
+    {
+        Buzzer_ON();
+
+    } else {
+        Buzzer_OFF();
+    }
+    OLED_ShowNum(2, 6, (uint32_t)distance, 3);
+    
         // 5. 处理按键和警报
         Key_Process();
+            // 处理超声波测距警报
+            
+
         // 3. 只有在骑行未结束且未锁存时更新时间
          STime_Update();//计算总时间
         // 4. 处理霍尔传感器数据 - 只在未锁存状态下进行
@@ -64,8 +76,9 @@ int main(void)
 
             Display_LockedData();
         }
-
+        
     }
+
 }
 
 // 系统初始化函数
