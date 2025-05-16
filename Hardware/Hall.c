@@ -189,8 +189,8 @@ void Hall_CaptureCallback(void)
     // --- 4. 计算瞬时速度 (基于 interval_us) ---
     if (interval_us > 0) {
         // 预计算常量部分，减少重复计算
-        // 修正：WHEEL_CIRCUMFERENCE应为4.0米(400厘米)，而非400米
-        const float distancePerPulse = (WHEEL_CIRCUMFERENCE / 100.0f) / MAGNET_COUNT; // 每个脉冲的距离(米)
+        // 修正：WHEEL_CIRCUMFERENCE 单位为米
+        const float distancePerPulse = WHEEL_CIRCUMFERENCE / MAGNET_COUNT; // 每个脉冲的距离(米)
         const float speedConvFactor = distancePerPulse * 3.6f; // 3.6 = 3600/1000 (转换为km/h)
         
         float timeInS = interval_us * 0.000001f; // 使用乘法代替除法
@@ -280,13 +280,13 @@ static void Hall_UpdateDistanceAndAverageSpeed(void)
 {
     // 计算总距离 (km) - 浮点运算
     float totalRotations = (float)hallSensor.totalPulses / MAGNET_COUNT;
-    hallSensor.totalDistance = totalRotations * WHEEL_CIRCUMFERENCE / 1000.0f;
+    hallSensor.totalDistance = (float)totalRotations * WHEEL_CIRCUMFERENCE / 1000.0f;
 
     // 计算平均速度 (km/h) - 浮点运算
     uint32_t totalRidingTime = STime_GetTotalRidingTimeMs();
     if (totalRidingTime > 0) {
         // 平均速度 = 总距离(km) / 总时间(小时)
-        hallSensor.averageSpeed = (hallSensor.totalDistance * 3600000.0f) / totalRidingTime;
+        hallSensor.averageSpeed = (float)(hallSensor.totalDistance * 3600000.0f) / totalRidingTime;
     } else {
         hallSensor.averageSpeed = 0;
     }

@@ -598,11 +598,12 @@ void Display_RealtimeData(float slope, float direction)
     OLED_ShowNum(4, 6, ridingTime.minutes, 2);
     OLED_ShowChar(4, 8, ':');
     OLED_ShowNum(4, 9, ridingTime.seconds, 2);
-    
+    /*
     // 显示总秒数以便验证 (调试用)
     uint32_t totalSec = ridingTime.totalTimeMs / 100;
     OLED_ShowString(4, 12, "s:");
     OLED_ShowNum(4, 14, totalSec, 3);
+    */
 }
 
 // 让LED闪烁指定次数
@@ -636,7 +637,7 @@ void Key_Process(void)
         g_distanceTargetReached = 1;  // 设置距离目标已达成标志
         
         // 距离目标达成后LED1闪烁3次
-        LED_Blink(LED1_PIN, 3);
+        LED_Blink(LED1_PIN, 7);
         
 
     }
@@ -649,7 +650,7 @@ void Key_Process(void)
             g_speedTargetReached = 1;  // 设置速度目标已达成标志
             
             // 速度目标达成后LED2闪烁2次
-            LED_Blink(LED2_PIN, 2);
+            LED_Blink(LED2_PIN, 7);
         }
     }
     else
