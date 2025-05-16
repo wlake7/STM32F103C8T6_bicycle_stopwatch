@@ -646,15 +646,16 @@ void Serial_SendLockedPacket(void)
     Serial_TxPacket[0] = 0xA5;  // 包头 (1字节)
     Serial_TxPacket[TX_Data_Len-1] = 0x5A;  // 包尾 (1字节)
     
-    // 浮点型数据装配 (3个float, 共12字节)
-    Serial_float(lockedData.distance, &Serial_TxPacket[1]);  // 距离 (4字节)
-    Serial_float(lockedData.averageSpeed, &Serial_TxPacket[5]);  // 平均速度 (4字节)
-    Serial_float(lockedData.maxAcceleration, &Serial_TxPacket[9]);  // 最大加速度 (4字节)
-    
+
     // 字节型数据装配 (3个字节, 共3字节)
-    Serial_Byte(lockedData.hours, &Serial_TxPacket[13]);  // 小时 (1字节)
-    Serial_Byte(lockedData.minutes, &Serial_TxPacket[14]);  // 分钟 (1字节)
-    Serial_Byte(lockedData.seconds, &Serial_TxPacket[15]);  // 秒 (1字节)
+    Serial_Byte(lockedData.hours, &Serial_TxPacket[1]);  // 小时 (1字节)
+    Serial_Byte(lockedData.minutes, &Serial_TxPacket[2]);  // 分钟 (1字节)
+    Serial_Byte(lockedData.seconds, &Serial_TxPacket[3]);  // 秒 (1字节)
+        // 浮点型数据装配 (3个float, 共12字节)
+    Serial_float(lockedData.distance, &Serial_TxPacket[4]);  // 距离 (4字节)
+    Serial_float(lockedData.averageSpeed, &Serial_TxPacket[8]);  // 平均速度 (4字节)
+    Serial_float(lockedData.maxAcceleration, &Serial_TxPacket[12]);  // 最大加速度 (4字节)
+    
     
     // 计算校验和并自动装配
     Serial_check();
@@ -719,7 +720,7 @@ void Key_Process(void)
             //g_bluetoothLastSendTime = currentTime;
             
             // 可选：发送指示 - LED闪烁提示正在发送
-            LED_Toggle(LED1_PIN);
+            //LED_Toggle(LED1_PIN);
         //}
     }
 
