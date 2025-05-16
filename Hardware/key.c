@@ -2,6 +2,7 @@
 #include "stime.h"
 #include "Hall.h"
 #include "sg04.h"
+#include "usart.h" // 添加串口头文件以使用蓝牙发送功能
 #include <math.h>  // 添加数学库，提供 fabs 函数
 
 // 添加NULL的定义
@@ -29,6 +30,8 @@ DisplayMode_t g_displayMode = DISPLAY_REALTIME; // 默认显示实时数据
 uint8_t g_distanceTargetReached = 0;      // 距离目标达成标志
 uint8_t g_speedTargetReached = 0;         // 速度目标达成标志
 
+// 添加蓝牙数据发送标志位
+static uint8_t g_bluetoothDataSent = 0;   // 蓝牙数据发送标志，0表示未发送，1表示已发送
 
 // 锁存数据
 static struct {
@@ -324,35 +327,36 @@ void EXTI9_5_IRQHandler(void)
         // 延长按键消抖时间，确保稳定
         sys_Delay_ms(KEY_DEBOUNCE_TIME);
         
-
-            if(GPIO_ReadInputDataBit(KEY_LOCK_PORT, KEY_LOCK_PIN) == Bit_RESET)
+        if(GPIO_ReadInputDataBit(KEY_LOCK_PORT, KEY_LOCK_PIN) == Bit_RESET)
+        {
+            // LOCK键按下处理
+            if(g_setState == SET_STATE_DONE && g_displayMode == DISPLAY_REALTIME && !STime_IsDataLocked())
             {
-                // LOCK键按下处理
-                if(g_setState == SET_STATE_DONE && g_displayMode == DISPLAY_REALTIME && !STime_IsDataLocked())
-                {
-                    // 保存当前数据到锁存结构体
-                    lockedData.distance = Hall_GetTotalDistance();
-                    lockedData.averageSpeed = Hall_GetAverageSpeed();
-                    lockedData.maxAcceleration = Hall_GetMaxAcceleration();
-                    
-                    // 获取时间
-                    STime_GetFormattedTime(&lockedData.hours, &lockedData.minutes, 
-                                          &lockedData.seconds, 0);  // 使用 0 替代 NULL
-                    
-                    // 设置锁存状态，确保所有数据处理都停止
-                    STime_SetDataLocked(1);
-                    //Hall_SetDataLocked(1);
-                    
-                    // 停止计时
-                    STime_Stop();
-                    
-                    // 切换到锁定显示模式
-                    g_displayMode = DISPLAY_LOCKED;
-                    OLED_Clear();
-                    // 显示锁定的数据
-                    //Display_LockedData();主函数进行判断了
-                }
+                // 保存当前数据到锁存结构体
+                lockedData.distance = Hall_GetTotalDistance();
+                lockedData.averageSpeed = Hall_GetAverageSpeed();
+                lockedData.maxAcceleration = Hall_GetMaxAcceleration();
+                
+                // 获取时间
+                STime_GetFormattedTime(&lockedData.hours, &lockedData.minutes, 
+                                      &lockedData.seconds, 0);  // 使用 0 替代 NULL
+                
+                // 设置锁存状态，确保所有数据处理都停止
+                STime_SetDataLocked(1);
+                
+                // 停止计时
+                STime_Stop();
+                
+                // 切换到锁定显示模式
+                g_displayMode = DISPLAY_LOCKED;
+                
+                // 清屏准备显示锁存数据
+                OLED_Clear();
+                
+                // 重置蓝牙数据发送标志
+                g_bluetoothDataSent = 0;
             }
+        }
         
         // 确保足够的延时，等待按键稳定释放
         sys_Delay_ms(20);
@@ -370,18 +374,12 @@ void EXTI9_5_IRQHandler(void)
         // 确认SET键仍然按下
         if(GPIO_ReadInputDataBit(KEY_SET_PORT, KEY_SET_PIN) == Bit_RESET)
         {
-            // SET键按下调试信息
-            //OLED_Clear();
-            //OLED_ShowString(1, 1, "SET Pressed");
-            //sys_Delay_ms(50);
-            
             // SET键按下处理
             if (g_setState == SET_STATE_DONE && g_displayMode == DISPLAY_LOCKED && 
                 STime_IsDataLocked()) {
                 // 在锁定模式下，SET键用于开始新骑行
                 // 解除数据锁存
                 STime_SetDataLocked(0);
-                //Hall_SetDataLocked(0);
                 
                 // 重置数据
                 Hall_ResetData();
@@ -393,7 +391,8 @@ void EXTI9_5_IRQHandler(void)
                 // 开始新的骑行
                 STime_Start();
                 
-
+                // 重置蓝牙数据发送标志
+                g_bluetoothDataSent = 0;
             } 
             else {
                 // 在设置模式下的处理
@@ -666,68 +665,20 @@ void Key_Process(void)
     } else {
         Buzzer_OFF();
     }
-    /*
-    // 处理锁存按键的轮询检测 - 结束骑行
-    // 只在未锁存状态下检测锁存按键
-    if(g_displayMode == DISPLAY_REALTIME && !STime_IsDataLocked() && 
-       Key_IsPressed(KEY_LOCK_PORT, KEY_LOCK_PIN)) {
-        
-        // 保存当前数据到锁存结构体
-        lockedData.distance = Hall_GetTotalDistance();
-        lockedData.averageSpeed = Hall_GetAverageSpeed();
-        lockedData.maxAcceleration = Hall_GetMaxAcceleration();
-        
-        // 获取时间
-        STime_GetFormattedTime(&lockedData.hours, &lockedData.minutes, &lockedData.seconds, 0); // 修改NULL为0
-        
-        // 设置锁存状态，确保所有数据处理都停止
-        STime_SetDataLocked(1);
-        Hall_SetDataLocked(1);
-        
-        // 停止计时
-        STime_Stop();
-        
-        // 切换到锁定显示模式
-        g_displayMode = DISPLAY_LOCKED;
-        
-        // 提示骑行结束
-        OLED_Clear();
-        OLED_ShowString(2, 1, "Ride Complete!");
-        OLED_ShowString(3, 1, "Data Saved");
-        sys_Delay_ms(1000);
-        
-        // 显示锁定的数据
-        Display_LockedData();
-    }
     
-    // 检查SET键是否被按下（配合主循环按键轮询）
-    if(g_displayMode == DISPLAY_LOCKED && !STime_IsRunning() && 
-       Key_IsPressed(KEY_SET_PORT, KEY_SET_PIN)) {
+    // 处理蓝牙数据发送 - 锁存状态下只发送一次
+    if (g_displayMode == DISPLAY_LOCKED && !g_bluetoothDataSent) {
+        // 发送锁存数据到蓝牙
+        Serial_SendLockedDataPacket(
+            lockedData.distance,
+            lockedData.averageSpeed,
+            lockedData.maxAcceleration,
+            lockedData.hours,
+            lockedData.minutes,
+            lockedData.seconds
+        );
         
-        // 重置数据
-        Hall_ResetData();
-        STime_Reset();
-        
-        // 切换回实时显示模式
-        g_displayMode = DISPLAY_REALTIME;
-        
-        // 开始新的骑行
-        STime_Start();
-        
-        // 显示开始新骑行的消息
-        OLED_Clear();
-        OLED_ShowString(2, 2, "New Ride");
-        OLED_ShowString(3, 2, "Starting...");
-        sys_Delay_ms(1000);
-        
-        // 重置目标达成标志
-        g_distanceTargetReached = 0;
-        g_speedTargetReached = 0;
-        
-        // 确保LED关闭
-        LED_Control(LED1_PIN, 0);
-        LED_Control(LED2_PIN, 0);
+        // 设置数据已发送标志，确保只发送一次
+        g_bluetoothDataSent = 1;
     }
-    */
-
 }

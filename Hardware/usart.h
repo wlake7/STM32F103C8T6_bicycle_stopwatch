@@ -35,6 +35,10 @@ void Serial_SendFloatFrame(float *data, uint8_t channels);  // 发送浮点数�
 void Serial_SendIMUData(float Pitch,float Roll,float Yaw); // 发送IMU数据
 void Serial_SendIMUG(int16_t MagX, int16_t MagY, int16_t MagZ); // 发送磁力计数据
 void Serial_Sendms2(float pitch,float roll,float yaw,float xy_ms2); // 发送水平加速度数据
+
+// 添加蓝牙锁存数据发送函数声明
+void Serial_SendLockedDataPacket(float distance, float avgSpeed, float maxAccel, uint8_t hours, uint8_t minutes, uint8_t seconds);
+
 /* 重定向printf函数所需 */
 int fputc(int ch, FILE *f);
 

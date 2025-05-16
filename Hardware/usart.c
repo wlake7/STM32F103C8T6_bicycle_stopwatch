@@ -167,6 +167,52 @@ void Serial_Sendms2(float pitch,float roll,float yaw,float xy_ms2)
   // 发送数据帧
   Serial_SendFloatFrame(data, 4);
 }
+
+/**
+  * 函    数：发送锁存数据包
+  * 参    数：distance - 锁存的距离(km)
+  * 参    数：avgSpeed - 锁存的平均速度(km/h)
+  * 参    数：maxAccel - 锁存的最大加速度(m/s^2)
+  * 参    数：hours - 锁存的小时
+  * 参    数：minutes - 锁存的分钟
+  * 参    数：seconds - 锁存的秒
+  * 返 回 值：无
+  * 数据格式：包头(0xA5) + 数据 + 校验和 + 包尾(0x5A)
+  */
+void Serial_SendLockedDataPacket(float distance, float avgSpeed, float maxAccel, uint8_t hours, uint8_t minutes, uint8_t seconds)
+{
+    uint8_t dataBuffer[15]; // 数据缓冲区: 3个float(12字节) + 3个uint8_t(3字节) = 15字节
+    uint8_t packet[18];     // 完整数据包: 包头(1) + 数据(15) + 校验和(1) + 包尾(1) = 18字节
+    uint8_t checksum = 0;   // 校验和
+    uint8_t i;
+    
+    // 1. 构造数据部分 (将浮点数和时间值复制到数据缓冲区)
+    memcpy(&dataBuffer[0], &distance, sizeof(float));  // 距离 (4字节)
+    memcpy(&dataBuffer[4], &avgSpeed, sizeof(float));  // 平均速度 (4字节)
+    memcpy(&dataBuffer[8], &maxAccel, sizeof(float));  // 最大加速度 (4字节)
+    dataBuffer[12] = hours;                            // 小时 (1字节)
+    dataBuffer[13] = minutes;                          // 分钟 (1字节)
+    dataBuffer[14] = seconds;                          // 秒 (1字节)
+    
+    // 2. 计算校验和 (所有数据字节之和的低8位)
+    for (i = 0; i < 15; i++) {
+        checksum += dataBuffer[i];
+    }
+    
+    // 3. 组装完整数据包
+    packet[0] = 0xA5;  // 包头
+    
+    // 复制数据部分
+    for (i = 0; i < 15; i++) {
+        packet[1 + i] = dataBuffer[i];
+    }
+    
+    packet[16] = checksum;  // 校验和
+    packet[17] = 0x5A;      // 包尾
+    
+    // 4. 发送数据包
+    Serial_SendArray(packet, 18);
+}
 //=====================
 //==============================
 /**
