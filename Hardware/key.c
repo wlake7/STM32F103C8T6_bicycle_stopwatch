@@ -30,8 +30,14 @@ DisplayMode_t g_displayMode = DISPLAY_REALTIME; // 默认显示实时数据
 uint8_t g_distanceTargetReached = 0;      // 距离目标达成标志
 uint8_t g_speedTargetReached = 0;         // 速度目标达成标志
 
-// 添加蓝牙数据发送标志位
+// 添加蓝牙数据发送标志位和重试次数控制
 static uint8_t g_bluetoothDataSent = 0;   // 蓝牙数据发送标志，0表示未发送，1表示已发送
+static uint8_t g_bluetoothSendRetries = 0; // 蓝牙发送重试次数
+#define MAX_BLUETOOTH_SEND_RETRIES 3      // 最大重试次数
+
+// 添加蓝牙数据发送时间控制
+static uint32_t g_bluetoothLastSendTime = 0;   // 上次蓝牙发送时间
+#define BLUETOOTH_SEND_INTERVAL 200           // 蓝牙发送间隔(毫秒)
 
 // 锁存数据
 static struct {
@@ -353,8 +359,12 @@ void EXTI9_5_IRQHandler(void)
                 // 清屏准备显示锁存数据
                 OLED_Clear();
                 
-                // 重置蓝牙数据发送标志
+                // 重置蓝牙数据发送标志和重试计数
                 g_bluetoothDataSent = 0;
+                g_bluetoothSendRetries = 0;
+                
+                // 重置蓝牙数据发送标志和发送时间
+                g_bluetoothLastSendTime = 0;
             }
         }
         
@@ -391,8 +401,12 @@ void EXTI9_5_IRQHandler(void)
                 // 开始新的骑行
                 STime_Start();
                 
-                // 重置蓝牙数据发送标志
+                // 重置蓝牙数据发送标志和重试计数
                 g_bluetoothDataSent = 0;
+                g_bluetoothSendRetries = 0;
+                
+                // 切换回实时显示模式时重置蓝牙相关变量
+                g_bluetoothLastSendTime = 0;
             } 
             else {
                 // 在设置模式下的处理
@@ -625,6 +639,30 @@ void LED_Blink(uint16_t LED_Pin, uint8_t times)
     }
 }
 
+// 发送锁存数据包函数
+void Serial_SendLockedPacket(void)
+{
+    // 初始化数据包
+    Serial_TxPacket[0] = 0xA5;  // 包头 (1字节)
+    Serial_TxPacket[TX_Data_Len-1] = 0x5A;  // 包尾 (1字节)
+    
+    // 浮点型数据装配 (3个float, 共12字节)
+    Serial_float(lockedData.distance, &Serial_TxPacket[1]);  // 距离 (4字节)
+    Serial_float(lockedData.averageSpeed, &Serial_TxPacket[5]);  // 平均速度 (4字节)
+    Serial_float(lockedData.maxAcceleration, &Serial_TxPacket[9]);  // 最大加速度 (4字节)
+    
+    // 字节型数据装配 (3个字节, 共3字节)
+    Serial_Byte(lockedData.hours, &Serial_TxPacket[13]);  // 小时 (1字节)
+    Serial_Byte(lockedData.minutes, &Serial_TxPacket[14]);  // 分钟 (1字节)
+    Serial_Byte(lockedData.seconds, &Serial_TxPacket[15]);  // 秒 (1字节)
+    
+    // 计算校验和并自动装配
+    Serial_check();
+    
+    // 发送数据包
+    Serial_SendArray(Serial_TxPacket, TX_Data_Len);
+}
+
 // 按键处理函数(主循环中调用)
 void Key_Process(void)
 {
@@ -665,20 +703,24 @@ void Key_Process(void)
     } else {
         Buzzer_OFF();
     }
-    
-    // 处理蓝牙数据发送 - 锁存状态下只发送一次
-    if (g_displayMode == DISPLAY_LOCKED && !g_bluetoothDataSent) {
-        // 发送锁存数据到蓝牙
-        Serial_SendLockedDataPacket(
-            lockedData.distance,
-            lockedData.averageSpeed,
-            lockedData.maxAcceleration,
-            lockedData.hours,
-            lockedData.minutes,
-            lockedData.seconds
-        );
+
+    // 修改为锁存状态下持续发送蓝牙数据
+    if (g_displayMode == DISPLAY_LOCKED) {
+        // 获取当前系统时间
+        //extern volatile uint32_t systemTimeMs;
+        //uint32_t currentTime = systemTimeMs;
         
-        // 设置数据已发送标志，确保只发送一次
-        g_bluetoothDataSent = 1;
+        // 每隔BLUETOOTH_SEND_INTERVAL发送一次数据
+        //if (currentTime - g_bluetoothLastSendTime >= BLUETOOTH_SEND_INTERVAL) {
+            // 发送锁存数据到蓝牙
+            Serial_SendLockedPacket();
+            
+            // 更新最后发送时间
+            //g_bluetoothLastSendTime = currentTime;
+            
+            // 可选：发送指示 - LED闪烁提示正在发送
+            LED_Toggle(LED1_PIN);
+        //}
     }
+
 }

@@ -46,9 +46,9 @@ int main(void)
         
         // 2. 计算坡度 (根据pitch角度)
         Slope = CalculateSlope(Pitch);
+ 
         // 5. 处理按键和警报
         Key_Process();
-        
         // 3. 只有在骑行未结束且未锁存时更新时间
          STime_Update();//计算总时间
         // 4. 处理霍尔传感器数据 - 只在未锁存状态下进行
@@ -64,7 +64,7 @@ int main(void)
 
             Display_LockedData();
         }
-        
+
     }
 }
 
@@ -91,6 +91,7 @@ void My_SystemInit(void)
     STime_Init();
     HCSR04_led_Init();
     Key_Init(); // 初始化按键、LED和蜂鸣器
+    Serial_Init();                         // 串口初始化
     
     // 初始化完成后显示
     OLED_ShowString(3, 1, "Ready!");

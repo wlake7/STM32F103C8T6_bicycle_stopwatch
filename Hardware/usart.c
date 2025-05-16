@@ -1,11 +1,11 @@
 #include "stm32f10x.h"                  // Device header
 #include "usart.h"
-
+#include <string.h>
 /* 串口接收缓冲区和标志位 */
 static uint8_t Serial_RxBuffer[USART_RX_BUFFER_SIZE];  // 接收缓冲区
 static uint16_t Serial_RxIndex = 0;                   // 接收缓冲区当前索引
 static uint8_t Serial_RxFlag = 0;                     // 接收完成标志位
-
+uint8_t Serial_TxPacket[TX_Data_Len];
 /**
   * 函    数：串口初始化
   * 参    数：无
@@ -54,16 +54,88 @@ void Serial_Init(void)
     /* USART使能 */
     USART_Cmd(USART_PORT, ENABLE);
 }
+//整形装配
+//参数：要写入的int型值，在蓝牙数据包位置
+void Serial_Int(int num,uint8_t *byte)
+{
+	byte[3] = (num & 0xFF000000) >> 24;
+	byte[2] = (num & 0x00FF0000) >> 16;
+	byte[1] = (num & 0x0000FF00) >> 8;
+	byte[0] = (num & 0x000000FF);
+}
 
+//浮点型装配
+//参数：要写入的float型值，在蓝牙数据包位置
+void Serial_float(float num,uint8_t *byte)
+{
+	union {
+			float f;
+			unsigned long u;
+		  } converter;
+		  converter.f = num;
+		  unsigned long longdata = converter.u;
+		  
+	byte[3] = (longdata & 0xFF000000) >> 24;
+	byte[2] = (longdata & 0x00FF0000) >> 16;
+	byte[1] = (longdata & 0x0000FF00) >> 8;
+	byte[0] = (longdata & 0x000000FF);
+}
+
+// short型装配
+// 参数：要写入的short型值，在蓝牙数据包位置
+void Serial_short (short s,uint8_t *byte)
+{
+	byte[1] = (s >> 8) & 0xFF;
+    byte[0] = s & 0xFF;
+}
+
+
+
+// byte型（uint8_t）装配
+// 参数：要写入的单字节值，在蓝牙数据包位置
+void Serial_Byte(uint8_t data, uint8_t *byte)
+{   
+    byte[0] = data;// 直接存入第一个字节（1字节）
+}
+
+
+//计算校验和，并自动装配
+void Serial_check(void)
+{
+    int LY_Zh = 0;
+    // 数据区范围：从索引1到TX_Data_Len-3（不包含校验和和包尾）
+    char DataLen = TX_Data_Len - 3; 
+    for (char fora = 1; fora <= DataLen; fora++)
+    {
+        LY_Zh += Serial_TxPacket[fora];
+    }
+    Serial_TxPacket[TX_Data_Len - 2] = LY_Zh & 0xFF;
+}
 /**
   * 函    数：串口发送一个字节
   * 参    数：Byte 要发送的一个字节
-  * 返 回 值：无
+  * 返 回 值：1成功，0超时失败
   */
+uint8_t Serial_SendByteWithTimeout(uint8_t Byte)
+{
+    uint32_t timeout = 10000; // 超时时间
+    
+    USART_SendData(USART_PORT, Byte);   // 将字节数据写入数据寄存器
+    
+    // 等待发送完成，增加超时保护
+    while (USART_GetFlagStatus(USART_PORT, USART_FLAG_TXE) == RESET) {
+        timeout--;
+        if (timeout == 0) {
+            return 0; // 超时返回失败
+        }
+    }
+    return 1; // 成功返回1
+}
+
+// 保持原始函数不变，但内部使用带超时版本
 void Serial_SendByte(uint8_t Byte)
 {
-    USART_SendData(USART_PORT, Byte);   // 将字节数据写入数据寄存器
-    while (USART_GetFlagStatus(USART_PORT, USART_FLAG_TXE) == RESET); // 等待发送完成
+    Serial_SendByteWithTimeout(Byte);
 }
 
 /**
@@ -93,8 +165,24 @@ void Serial_SendArray(uint8_t *Array, uint16_t Length)
         Serial_SendByte(Array[i]);
     }
 }
-//=====================
-//==============================
+
+/**
+  * 函    数：串口发送数组（带超时保护）
+  * 参    数：Array 要发送的数组，Length 数组长度
+  * 返 回 值：实际发送的字节数
+  */
+uint16_t Serial_SendArrayWithTimeout(uint8_t *Array, uint16_t Length)
+{
+    uint16_t i;
+    for (i = 0; i < Length; i++)
+    {
+        if (!Serial_SendByteWithTimeout(Array[i])) {
+            return i; // 返回已成功发送的字节数
+        }
+    }
+    return Length; // 全部发送成功
+}
+
 /**
   * 函    数：发送浮点数帧
   * 参    数：data 浮点数据数组，channels 通道数量
@@ -156,6 +244,7 @@ void Serial_SendIMUData(float Pitch,float Roll,float Yaw)
          // Send data frame using the existing float frame function
          Serial_SendFloatFrame(data, 3);
      }
+/*
 void Serial_Sendms2(float pitch,float roll,float yaw,float xy_ms2)
 {
   float data[4]; 
@@ -167,7 +256,7 @@ void Serial_Sendms2(float pitch,float roll,float yaw,float xy_ms2)
   // 发送数据帧
   Serial_SendFloatFrame(data, 4);
 }
-
+*/
 /**
   * 函    数：发送锁存数据包
   * 参    数：distance - 锁存的距离(km)
@@ -176,10 +265,10 @@ void Serial_Sendms2(float pitch,float roll,float yaw,float xy_ms2)
   * 参    数：hours - 锁存的小时
   * 参    数：minutes - 锁存的分钟
   * 参    数：seconds - 锁存的秒
-  * 返 回 值：无
+  * 返 回 值：1成功，0失败
   * 数据格式：包头(0xA5) + 数据 + 校验和 + 包尾(0x5A)
   */
-void Serial_SendLockedDataPacket(float distance, float avgSpeed, float maxAccel, uint8_t hours, uint8_t minutes, uint8_t seconds)
+uint8_t Serial_SendLockedDataPacket(float distance, float avgSpeed, float maxAccel, uint8_t hours, uint8_t minutes, uint8_t seconds)
 {
     uint8_t dataBuffer[15]; // 数据缓冲区: 3个float(12字节) + 3个uint8_t(3字节) = 15字节
     uint8_t packet[18];     // 完整数据包: 包头(1) + 数据(15) + 校验和(1) + 包尾(1) = 18字节
@@ -210,11 +299,14 @@ void Serial_SendLockedDataPacket(float distance, float avgSpeed, float maxAccel,
     packet[16] = checksum;  // 校验和
     packet[17] = 0x5A;      // 包尾
     
-    // 4. 发送数据包
-    Serial_SendArray(packet, 18);
+    // 4. 发送数据包 - 使用带超时版本
+    uint16_t bytesSent = Serial_SendArrayWithTimeout(packet, 18);
+    
+    // 返回发送状态：全部发送成功返回1，否则返回0
+    return (bytesSent == 18) ? 1 : 0;
 }
-//=====================
-//==============================
+
+
 /**
   * 函    数：串口接收一个字节
   * 参    数：无

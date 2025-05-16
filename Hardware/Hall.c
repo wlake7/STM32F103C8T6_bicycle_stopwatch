@@ -185,7 +185,7 @@ void Hall_CaptureCallback(void)
     // 设置骑行状态
     hallSensor.ridingState = RIDING_ACTIVE; // 中断函数中设置骑行状态为ACTIVE
     hallSensor.noSignalTimeout = 0; // 重置超时计数器
-    //ridingTime.isRunning = 1;
+    ridingTime.isRunning = 1;
     // --- 4. 计算瞬时速度 (基于 interval_us) ---
     if (interval_us > 0) {
         // 预计算常量部分，减少重复计算
@@ -260,7 +260,7 @@ void Hall_TimeoutCheck(void)
         hallSensor.noSignalTimeout++;//目的是判断骑行->停止，当长时间没进hall中断清零就判断为停止
         
         // 超时阈值调整为2秒 (调用周期为10ms，时间为10ms * X)
-        if (hallSensor.noSignalTimeout >= 200) {
+        if (hallSensor.noSignalTimeout >= 80) {
             hallSensor.ridingState = RIDING_STOPPED;
             hallSensor.instantSpeed = 0; // 确保速度清零
             hallSensor.acceleration = 0; // 停止时加速度也为0
