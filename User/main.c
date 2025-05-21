@@ -2,16 +2,17 @@
 #include "OLED.h"
 #include "sys_delay.h"
 #include "MPU6050.h"
-#include "HMC5843.h"
+//#include "HMC5843.h"
 #include "Hall.h"
 #include "sg04.h"
 #include "stime.h"
 #include "usart.h"
 #include "key.h"                        //初始化不由My_SystemInit()函数执行，
-#include "math.h"                       
+#include "math.h"   
+#include "DH11.h"                    
 // 全局变量,用于欧拉角的姿态解算
 int16_t AX, AY, AZ, GX, GY, GZ;
-int16_t MagX, MagY, MagZ; 
+//int16_t MagX, MagY, MagZ; 
 float Pitch, Roll, Yaw;
 float Slope; // 存储计算出的坡度值
 // 系统初始化函数
@@ -26,7 +27,7 @@ extern void Display_LockedData(void);
 
 // 数据采集和处理函数
 void CollectSensorData(void);
-
+DHT11_Data_TypeDef dht11_data; // 定义DHT11数据结构体
 int main(void)
 {   
     // 系统初始化
@@ -41,20 +42,21 @@ int main(void)
     // 主循环
     while (1)
     {
-        // 1. 采集传感器数据 (MPU6050, HMC5843, 超声波)
+        // 1. 采集传感器数据 (MPU6050, HMC5843, 超声波, DHT11)
         CollectSensorData();
         
         // 2. 计算坡度 (根据pitch角度)
         Slope = CalculateSlope(Pitch);
-            float distance = HCSR04_GetDistance();
-    if(distance < OBSTACLE_DISTANCE) 
-    {
-        Buzzer_ON();
+        //Slope = Pitch; // 直接使用pitch角度作为坡度
+        float distance = HCSR04_GetDistance();
+            if(distance>1&&(distance < OBSTACLE_DISTANCE)) 
+            {
+                Buzzer_ON();
 
-    } else {
-        Buzzer_OFF();
-    }
-    OLED_ShowNum(2, 6, (uint32_t)distance, 3);
+            } else {
+                Buzzer_OFF();
+            }
+        OLED_ShowNum(4, 12, (uint32_t)distance, 3);
     
         // 5. 处理按键和警报
         Key_Process();
@@ -99,17 +101,16 @@ void My_SystemInit(void)
     
     // 初始化硬件
     MPU6050_Init();
-    HMC5843_Init();
+    //HMC5843_Init();
     Hall_Init();
     STime_Init();
     HCSR04_led_Init();
     Key_Init(); // 初始化按键、LED和蜂鸣器
     Serial_Init();                         // 串口初始化
+    DH11_Init();                           // 初始化DH11传感器
+
     
-    // 初始化完成后显示
-    OLED_ShowString(3, 1, "Ready!");
-    sys_Delay_ms(1000);
-    OLED_Clear();
+
 }
 
 // 计算坡度
@@ -127,12 +128,14 @@ void CollectSensorData(void)
     MPU6050_GetData(&AX, &AY, &AZ, &GX, &GY, &GZ);
     
     // 获取HMC5843磁力计校准后的数据
-    HMC5843_GetCalibratedData(&MagX, &MagY, &MagZ);
+    //HMC5843_GetCalibratedData(&MagX, &MagY, &MagZ);
     
     // 综合处理IMU和磁力计数据，计算欧拉角
-    IMU_ComputeEulerAngles(AX, AY, AZ, GX, GY, GZ, MagX, MagY, MagZ, &Pitch, &Roll, &Yaw);
-    
+    //IMU_ComputeEulerAngles(AX, AY, AZ, GX, GY, GZ, MagX, MagY, MagZ, &Pitch, &Roll, &Yaw);
+    MPU6050_ProcessData(&AX, &AY, &AZ, &GX, &GY, &GZ, &Pitch, &Roll, &Yaw);
     // 启动超声波测量
     HCSR04_StartMeasure();
+    // 获取DH11传感器数据 - 每2秒读取一次(大约200次循环)
+    DH11_Read_Data_Periodic(&dht11_data, 200);
 }
 

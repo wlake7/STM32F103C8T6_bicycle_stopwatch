@@ -111,7 +111,7 @@ float HCSR04_GetDistance(void)
         }
     }
     
-    if(valid_count == 0) return 200;  // 没有有效数据
+    if(valid_count == 0) return 0;  // 没有有效数据
     
     // 计算初步平均值
     avg /= valid_count;
@@ -127,7 +127,7 @@ float HCSR04_GetDistance(void)
         }
     }
     
-    return (valid_count > 0) ? (final_avg / valid_count) : 200;
+    return (valid_count > 0) ? (final_avg / valid_count) : 0;
 }
 
 // TIM3中断服务函数（获取数据并处理得到距离）

@@ -290,6 +290,7 @@ static void Hall_UpdateDistanceAndAverageSpeed(void)
     } else {
         hallSensor.averageSpeed = 0;
     }
+    
  
 }
 

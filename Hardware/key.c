@@ -4,7 +4,7 @@
 #include "sg04.h"
 #include "usart.h" // 添加串口头文件以使用蓝牙发送功能
 #include <math.h>  // 添加数学库，提供 fabs 函数
-
+#include "DH11.h"
 // 添加NULL的定义
 #ifndef NULL
 #define NULL ((void *)0)
@@ -29,7 +29,7 @@ float g_targetDistance = DEFAULT_DISTANCE;// 默认目标距离
 DisplayMode_t g_displayMode = DISPLAY_REALTIME; // 默认显示实时数据
 uint8_t g_distanceTargetReached = 0;      // 距离目标达成标志
 uint8_t g_speedTargetReached = 0;         // 速度目标达成标志
-
+extern DHT11_Data_TypeDef dht11_data;
 // 添加蓝牙数据发送标志位和重试次数控制
 static uint8_t g_bluetoothDataSent = 0;   // 蓝牙数据发送标志，0表示未发送，1表示已发送
 static uint8_t g_bluetoothSendRetries = 0; // 蓝牙发送重试次数
@@ -541,13 +541,19 @@ void Display_RealtimeData(float slope, float direction)
     float speed = Hall_GetAverageSpeed(); // 获取平均速度
     uint32_t speed_int = (uint32_t)speed;
     uint32_t speed_frac = (uint32_t)((speed - speed_int) * 10) % 10;
-    OLED_ShowString(1, 4, "V:");
+    OLED_ShowString(1, 3, "V:");
     //OLED_ShowFloat(1, 6, speed, 3, 2); // 显示速度，保留两位整数和一位小数
-    OLED_ShowNum(1, 6, speed_int, 2);
-    OLED_ShowChar(1, 8, '.');
-    OLED_ShowNum(1, 9, speed_frac, 1);
-    OLED_ShowString(1, 10, "km/h");
-    
+    OLED_ShowNum(1, 5, speed_int, 2);
+    OLED_ShowChar(1, 7, '.');
+    OLED_ShowNum(1, 8, speed_frac, 1);
+    OLED_ShowString(1, 9, "km/h");
+    //显示温度
+    OLED_ShowString(1, 12, "T");
+    OLED_ShowNum(1, 13, dht11_data.temperature_int, 2);
+
+
+
+
     // 显示骑行距离 - 修改为更精确的显示方式
     float distance = Hall_GetTotalDistance();
     OLED_ShowString(2, 1, "D:");
@@ -565,7 +571,9 @@ void Display_RealtimeData(float slope, float direction)
         OLED_ShowNum(2, 6, dist_frac, 2);
     }
     OLED_ShowString(2, 9, "km");
-    
+    // 显示湿度
+    OLED_ShowString(2, 12, "H");
+    OLED_ShowNum(2, 13, dht11_data.humidity_int, 2);
 
     
     // 显示坡度和方向

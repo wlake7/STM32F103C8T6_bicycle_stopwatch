@@ -8,7 +8,7 @@
 #define HCSR04_MIN_DISTANCE 2       // 最小距离2cm
 #define SAMPLE_COUNT        4       // 采样次数
 #define FILTER_THRESHOLD    50      // 异常值过滤阈值(cm)
-#define MAX_DEVIATION       20      // 最大允许偏差(cm)
+#define MAX_DEVIATION       35      // 最大允许偏差(cm)
 
 #define HCSR04_Trig GPIO_Pin_1
 #define HCSR04_Echo GPIO_Pin_6
